@@ -104,6 +104,22 @@ def cmd_examples(args):
     )
 
 
+def _format_price(price):
+    """$18 for whole dollars, $18.50 otherwise — the way the fit card writes it."""
+    if price is None:
+        return "$?"
+    return f"${price:.0f}" if float(price).is_integer() else f"${price:.2f}"
+
+
+def _print_section(label, text):
+    """Label on its own line, then every non-blank line of text, flush left."""
+    print(f"{label}:")
+    for line in str(text).splitlines():
+        if line.strip():
+            print(line.strip())
+    print()
+
+
 def _ask_one(query, wardrobe, use_trace):
     from agent import run_agent
     import trace as trace_module
@@ -115,15 +131,16 @@ def _ask_one(query, wardrobe, use_trace):
 
     print()
     if session["error"]:
-        print(f"  {session['error']}")
+        print(session["error"])
+        print()
     else:
         item = session["selected_item"] or {}
-        print(f"  Found:    {item.get('title')} — ${item.get('price')} on {item.get('platform')}")
-        print()
-        print(f"  Outfit:   {session['outfit_suggestion']}")
-        print()
-        print(f"  Fit card: {session['fit_card']}")
-    print()
+        _print_section(
+            "Found",
+            f"{item.get('title')} — {_format_price(item.get('price'))} on {item.get('platform')}",
+        )
+        _print_section("Outfit", session["outfit_suggestion"])
+        _print_section("Fit card", session["fit_card"])
 
     if use_trace:
         text = trace_module.get_trace()

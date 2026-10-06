@@ -178,8 +178,19 @@ This is an agent-powered application that helps you find your next "fit". A user
 **One full query**
 
 ```
-$ python app.py ask '...'
+$ python app.py ask 'Find me a vintage polo tee under 30 dollars'
 
+Found:
+Y2K Baby Tee — Butterfly Print — $18 on depop
+
+Outfit:
+Outfit 1: Y2K Baby Tee — Butterfly Print, Baggy straight-leg jeans, dark wash, Chunky white sneakers, Black crossbody bag. The fitted crop of the tee balances the volumeof the baggy jeans for an easy Y2K streetwear look.
+Outfit 2: Y2K Baby Tee — Butterfly Print, Wide-leg khaki trousers, Vintage black denim jacket, Black combat boots, Brown leather belt. Pairing the feminine butterfly graphic with structured khaki trousers and edgy boots creates a cool contrast.
+
+Fit card:
+Found the cutest little butterfly tee on depop for only $18 and I am so obsessed. I've been living for that whole fitted top and baggy jeans vibe lately. It’s also superfun dressed down with some heavy combat boots and a jacket for a little edge.
+
+0 model calls this session, 3 served from cache
 ```
 
 **The three tools, tested one at a time**

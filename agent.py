@@ -13,10 +13,13 @@ Build and test your three tools in `tools.py` first. Then come here.
     python agent.py          runs both example paths below
 """
 
+import json
+import re
+
 import config
 import trace
 from tools import search_listings, suggest_outfit, create_fit_card
-from generate import ModelUnavailable
+from generate import generate, ModelUnavailable
 
 
 # ── session state ─────────────────────────────────────────────────────────────
@@ -40,10 +43,12 @@ def new_session(query: str, wardrobe: dict) -> dict:
         "parsed": {},                # description / size / max_price you pulled out of it
         "search_results": [],        # everything search_listings returned
         "selected_item": None,       # the one you chose — goes into suggest_outfit
+        "item_passed_to_suggest_outfit": None,  # what actually reached the tool — criterion 3
         "wardrobe": wardrobe,        # the user's wardrobe
         "outfit_suggestion": None,   # what suggest_outfit returned
         "fit_card": None,            # what create_fit_card returned
         "error": None,               # set when the run ended early
+        "next_step": "parse",        # which step the loop runs next; "done" ends it
     }
 
 
@@ -107,9 +112,130 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     """
     session = new_session(query, wardrobe)
 
-    # TODO: delete these two lines and build the loop.
-    session["error"] = "The planning loop isn't built yet — see the TODO in agent.py."
+    # Every tool reads its inputs back out of the session, never from a local
+    # carried over from the previous step — that's what keeps the state visible.
+    count = 0
+    while session["next_step"] != "done":
+        count += 1
+        trace.check_iterations(count)
+
+        if session["next_step"] == "parse":
+            session["parsed"] = _parse_query(session["query"]) or {}
+            if not session["parsed"]:
+                session["error"] = _PARSE_FAILED_MESSAGE
+                session["next_step"] = "done"
+            else:
+                session["next_step"] = "search"
+
+        elif session["next_step"] == "search":
+            session["search_results"] = search_listings(
+                session["parsed"]["description"],
+                session["parsed"]["size"],
+                session["parsed"]["max_price"],
+            )
+            # The branch: nothing to style means nothing to suggest.
+            if not session["search_results"]:
+                session["error"] = _NO_RESULTS_MESSAGE
+                session["next_step"] = "done"
+            else:
+                session["selected_item"] = session["search_results"][0]
+                session["next_step"] = "suggest"
+
+        elif session["next_step"] == "suggest":
+            session["item_passed_to_suggest_outfit"] = session["selected_item"]
+            session["outfit_suggestion"] = suggest_outfit(
+                session["item_passed_to_suggest_outfit"], session["wardrobe"]
+            )
+            session["next_step"] = "card"
+
+        elif session["next_step"] == "card":
+            session["fit_card"] = create_fit_card(
+                session["outfit_suggestion"], session["selected_item"]
+            )
+            session["next_step"] = "done"
+
     return session
+
+
+# ── query parsing ─────────────────────────────────────────────────────────────
+
+_NO_RESULTS_MESSAGE = (
+    "Nothing matched that search. Try a higher price limit, a different size, "
+    "or broader words for the item (e.g. \"jacket\" instead of \"designer "
+    "bomber jacket\")."
+)
+
+_PARSE_FAILED_MESSAGE = (
+    "Couldn't understand that request. Try naming the item, then any size and "
+    "price limit, e.g. \"graphic tee under $30, size M\"."
+)
+
+_PARSER_SYSTEM = (
+    "You turn a thrift-shopping request into JSON for a search tool. "
+    "Reply with only a JSON object, no markdown and no commentary."
+)
+
+_PARSER_PROMPT = """Extract three fields from the request below.
+
+- "description": the item the user wants, in plain words (style words like
+  "vintage" stay). Remove every size and price word.
+- "size": the size in the format the listings use, or null if none is named.
+    - letter sizes: XXS, XS, S, M, L, XL, XXL ("medium" or "med" -> "M",
+      "small" -> "S", "large" -> "L", "extra large" -> "XL")
+    - shoe sizes get a "US " prefix ("size 8" -> "US 8", "8.5" -> "US 8.5")
+    - waist and length: "30 waist" -> "W30", "30x30" -> "W30 L30"
+    - "one size" -> "One Size"
+    - two sizes are joined with "/" ("small or medium" -> "S/M")
+- "max_price": the price ceiling as a number ("under $30" -> 30), or null if
+  none is named.
+
+Example: "small graphic tee under $30" ->
+{{"description": "graphic tee", "size": "S", "max_price": 30}}
+
+Request: {query}"""
+
+
+def _parse_query(query: str) -> dict | None:
+    """
+    Ask the model to split the query into description / size / max_price.
+
+    Returns None when the reply isn't usable — the loop stops on that rather
+    than searching with a guess.
+    """
+    reply = generate(
+        _PARSER_PROMPT.format(query=query),
+        system=_PARSER_SYSTEM,
+        temperature=0.0,
+    )
+
+    # Models sometimes wrap JSON in a ```json fence despite being told not to.
+    text = re.sub(r"^```(?:json)?\s*|\s*```$", "", reply.strip())
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(data, dict):
+        return None
+
+    description = data.get("description")
+    if not isinstance(description, str) or not description.strip():
+        return None
+
+    size = data.get("size")
+    if not isinstance(size, str) or not size.strip():
+        size = None
+
+    max_price = data.get("max_price")
+    if isinstance(max_price, bool) or not isinstance(max_price, (int, float, type(None))):
+        return None
+    if max_price is not None:
+        max_price = float(max_price)
+
+    return {
+        "description": description.strip(),
+        "size": size.strip() if size else None,
+        "max_price": max_price,
+    }
 
 
 # ── running it directly ───────────────────────────────────────────────────────
@@ -121,6 +247,10 @@ def _show(session: dict) -> None:
         return
 
     item = session["selected_item"] or {}
+    # Check selected item is the same as the one passed to suggest_outfit
+    print(f"  selected_item: {item['id']}")
+    print(f"  item_passed_to_suggest_outfit: {session['item_passed_to_suggest_outfit']['id']}")
+
     print(f"  found:    {item.get('title')} — ${item.get('price')} on {item.get('platform')}")
     print(f"  outfit:   {session['outfit_suggestion']}")
     print(f"  fit card: {session['fit_card']}")

@@ -41,7 +41,7 @@
 
 <!-- Three or four sentences: what a user asks for, and what they get back. -->
 
-This is an agent-powered application that helps you find your next "fit". A user fills our their wardrobe and asks the system for a new item. The system takes the user prompt and looks at their wardrobe before checking a set of listings. They get back a set of listings to check out with a caption written a caption. You stay in control of what to purchase next, the system helps with the tedium involved with comparing clothes across N different platforms. 
+This is an agent-powered application that helps you find your next "fit". A user fills out their wardrobe and asks the system for a new item. The system takes the user prompt and searches a set of listings, then looks at their wardrobe to style the top match. They get back that listing, one or two outfit ideas built from what they own, and a caption written about the find. You stay in control of what to purchase next, the system helps with the tedium involved with comparing clothes across N different platforms. 
 
 ---
 
@@ -68,7 +68,9 @@ This is an agent-powered application that helps you find your next "fit". A user
 - `description` is the item the user wants, in plain words, with size and price words already removed by the parser. "small graphic tee under $30" arrives as `description="graphic tee"`, `size="S"`, `max_price=30.0`. Any filler words or stray numbers left over are removed by the tool.
 - `size` is already in the format the data uses (`M`, `W30`, `W30 L30`, `US 8`, `One Size`), or `None` when the user didn't name one. The tool doesn't do any natural language processing, so the parser does the conversion:
   - "medium" or "med" → `M`
-  - shoe sizes get the `US` prefix every shoe listing uses ("size 8" → `US 8`). Non-US sizes are converted in the listings size attribute.
+  - shoe sizes get the `US` prefix every shoe listing uses ("size 8" → `US 8`). Every shoe listing in the data uses US sizes.
+  - waist and length get the `W`/`L` prefix ("30 waist" → `W30`, "30x30" → `W30 L30`)
+  - "one size" → `One Size`
   - two sizes are joined with a forward slash ("small or medium" → `S/M`)
 - `max_price` is a float, or `None` when the user didn't give a price.
 
@@ -150,7 +152,7 @@ This is an agent-powered application that helps you find your next "fit". A user
 
 **Where it lives:** `agent.py::run_agent`
 
-**How the query is parsed:** <!-- regex, string splitting, or asking the model — say which -->Asking the model. Interprets maximum value and size from natural language in the query for robustness. Using temperature 0.0 for parsing.
+**How the query is parsed:** <!-- regex, string splitting, or asking the model — say which -->Asking the model. Interprets maximum value and size from natural language in the query for robustness. Using temperature 0.0 for parsing. The model replies with JSON; if the reply is unusable (not JSON, no description, or a price that isn't a number), the run stops with a message asking the user to rephrase, before `search_listings` is called.
 
 **What moves through the session:**
 - "query": query,              # what the user typed
@@ -162,6 +164,7 @@ This is an agent-powered application that helps you find your next "fit". A user
 - "outfit_suggestion": None,   # what suggest_outfit returned
 - "fit_card": None,            # what create_fit_card returned
 - "error": None,               # set when the run ended early
+- "next_step": "parse",        # which step the loop runs next; "done" ends it
 
 ---
 

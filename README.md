@@ -225,15 +225,15 @@ Found these vintage Levi's 501 jeans thrifting the other day and I am obsessed w
 
 **Moment 1**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* Implementation of each of the tool functions based on the docstrings and documentation in the codebase. I asked it to ask any clarifying questions necessary. Also the agent run loop.
+- *What came back:* Initial implementation of the functions.
+- *What I changed:* I did a few iterations with it to make sure that the tools were aligned with the criteria. I had to make sure the generated code was using existing infrastructure like the session variable.
 
 **Moment 2**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* Design for the criteria brainstorming and starting drafts. I gave it initial thoughts and asked it to critique them.
+- *What came back:* Drafts and things to reason through for improving the criteria. 
+- *What I changed:* I added to most of the generated criteria to account for additional context from the assignment. Like the assumptions at the end of the 4th criteria.
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 

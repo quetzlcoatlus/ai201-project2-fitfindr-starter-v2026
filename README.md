@@ -41,7 +41,7 @@
 
 <!-- Three or four sentences: what a user asks for, and what they get back. -->
 
-
+This is an agent-powered application that helps you find your next "fit". A user fills our their wardrobe and asks the system for a new item. The system takes the user prompt and looks at their wardrobe before checking a set of listings. They get back a set of listings to check out with a caption written a caption. You stay in control of what to purchase next, the system helps with the tedium involved with comparing clothes across N different platforms. 
 
 ---
 
@@ -59,24 +59,24 @@
 
 ### `search_listings`
 
-- **What it does:**
-- **Inputs:** <!-- name and type each: `max_price` (float), not "a price" -->
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Takes a description and searches listings data for items matching a size and price ceiling
+- **Inputs:** <!-- name and type each: `max_price` (float), not "a price" --> `description` (str), `size` (str), `max_price` (float)
+- **Returns:** A list of listing dictionaries, best match first
+- **When it has nothing:** Returns an empty list
 
 ### `suggest_outfit`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Takes a thrifted item and the user's wardrobe to suggest one or two outfits they can make
+- **Inputs:** `new_item` (dict), `wardrobe` (dict)
+- **Returns:** A non-empty string with outfit suggestions.
+- **When it has nothing:** On empty wardrobe, returns general stying advice
 
 ### `create_fit_card`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Writes a short caption someone would post about the find
+- **Inputs:** `outfit` (str), `new_item` (dict) 
+- **Returns:** A two-to-four sentence caption about the find
+- **When it has nothing:** With no outfit, returns a descriptive message about the thrifted item
 
 ---
 
@@ -93,7 +93,7 @@
      The grader checks your code against what you claim here, so the file and
      function have to be real. -->
 
-**Branch rule:**
+**Branch rule:** If search_listings returns an empty list, put a message in the session and stop. Otherwise, take the first result and go to suggest_outfit.
 
 **Where it lives:** `agent.py::run_agent`
 
